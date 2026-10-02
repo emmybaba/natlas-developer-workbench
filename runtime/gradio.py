@@ -75,7 +75,7 @@ class GradioRuntime(NAtlasRuntime):
         while time.time() - start_time < self.timeout:
             response = requests.get(
                 f"{self.base_url}/gradio_api/call/generate/{event_id}",
-                timeout=30,
+                timeout=60,
             )
 
             response.raise_for_status()
