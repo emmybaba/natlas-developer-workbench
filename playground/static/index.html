@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N-ATLaS Developer Playground</title>
+</head>
+
+<body>
+
+    <h1>N-ATLaS Developer Playground</h1>
+
+    <p>
+        Test prompts against the N-ATLaS model through the Developer Workbench.
+    </p>
+
+    <textarea
+        id="prompt"
+        rows="8"
+        cols="70"
+        placeholder="Enter your prompt here..."
+    ></textarea>
+
+    <br><br>
+
+    <button id="generate">Generate Response</button>
+
+    <h2>Response</h2>
+
+    <pre id="response"></pre>
+
+    <script>
+        const button = document.getElementById("generate");
+        const promptInput = document.getElementById("prompt");
+        const responseBox = document.getElementById("response");
+
+        button.addEventListener("click", async () => {
+            const prompt = promptInput.value.trim();
+
+            if (!prompt) {
+                responseBox.textContent = "Please enter a prompt.";
+                return;
+            }
+
+            responseBox.textContent = "Generating...";
+
+            try {
+                const response = await fetch("/api/generate", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        prompt: prompt
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.detail || "Request failed."
+                    );
+                }
+
+                responseBox.textContent = data.response;
+
+            } catch (error) {
+                responseBox.textContent =
+                    "Error: " + error.message;
+            }
+        });
+    </script>
+
+</body>
+</html>
