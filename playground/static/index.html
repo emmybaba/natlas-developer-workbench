@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +8,6 @@
 </head>
 
 <body>
-
     <h1>N-ATLaS Developer Playground</h1>
 
     <p>
@@ -19,15 +19,18 @@
         rows="8"
         cols="70"
         placeholder="Enter your prompt here..."
+        aria-label="Enter your prompt"
     ></textarea>
 
     <br><br>
 
-    <button id="generate">Generate Response</button>
+    <button id="generate" type="button">
+        Generate Response
+    </button>
 
     <h2>Response</h2>
 
-    <pre id="response"></pre>
+    <pre id="response" aria-live="polite"></pre>
 
     <script>
         const button = document.getElementById("generate");
@@ -42,6 +45,7 @@
                 return;
             }
 
+            button.disabled = true;
             responseBox.textContent = "Generating...";
 
             try {
@@ -55,22 +59,40 @@
                     })
                 });
 
-                const data = await response.json();
+                let data;
+
+                try {
+                    data = await response.json();
+                } catch {
+                    throw new Error(
+                        `Server returned an unexpected response (HTTP ${response.status}).`
+                    );
+                }
 
                 if (!response.ok) {
                     throw new Error(
-                        data.detail || "Request failed."
+                        data.detail ||
+                        data.message ||
+                        `Request failed (HTTP ${response.status}).`
+                    );
+                }
+
+                if (typeof data.response !== "string") {
+                    throw new Error(
+                        "The server response did not contain generated text."
                     );
                 }
 
                 responseBox.textContent = data.response;
 
             } catch (error) {
-                responseBox.textContent =
-                    "Error: " + error.message;
+                responseBox.textContent = "Error: " + error.message;
+
+            } finally {
+                button.disabled = false;
             }
         });
     </script>
-
 </body>
 </html>
+```
