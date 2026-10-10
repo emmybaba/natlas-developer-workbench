@@ -30,16 +30,20 @@ The current implementation includes the following components:
 | `runtime/gradio.py`            | Integration with a Gradio-hosted inference service          |
 | `runtime/openai_compatible.py` | Integration with an OpenAI-compatible inference endpoint    |
 | `runtime/llama_cpp.py`         | Local GGUF inference integration through `llama-cpp-python` |
+| `runtime/mock.py`              | Offline mock runtime for development without a model        |
 | `sdk/natlas_sdk/`              | Public Python SDK                                           |
-| `playground/app.py`            | FastAPI backend for the browser playground                  |
-| `playground/static/index.html` | Browser-based prompt interface                              |
+| `playground/app.py`            | FastAPI backend for the workbench                           |
+| `playground/static/index.html` | Browser workbench: Playground, Compare and Evaluate tabs    |
+| `sdk/natlas_sdk/`              | Python SDK: generate, chat, conversations, prompt apps, JSON output, retries |
+| `apps/`                        | Prompt apps: reusable tasks defined as JSON                 |
+| `scaffold/`                    | `natlas new` project generator and starter templates        |
+| `docs/building-apps.md`        | Developer guide for building applications                   |
+| `evaluation/`                  | Prompt-suite runner and command-line interface              |
+| `datasets/prompts/`            | JSONL prompt suites (see `datasets/README.md`)              |
+| `examples/quickstart.py`       | Minimal SDK usage example                                   |
 | `tests/`                       | Automated and optional live-inference tests                 |
-| `datasets/`                    | Dataset-related project area                                |
-| `evaluation/`                  | Evaluation-related project area                             |
-| `examples/`                    | Example application area                                    |
-| `docs/`                        | Project documentation                                       |
 
-Some directories establish the foundation for future functionality; their presence alone does not imply that a complete dataset-management, evaluation, or fine-tuning workflow is implemented.
+The evaluation runner executes simple deterministic checks over prompt suites. Dataset management beyond those JSONL files, scored evaluation of model quality, and fine-tuning workflows are not implemented and remain future work.
 
 ### Request flow
 
@@ -92,9 +96,48 @@ A compatible model file and a working `llama-cpp-python` installation are requir
 
 A third-party model artifact considered for this workflow is `inuwamobarak/N-ATLaS-8B-GGUF-Q4_K_M`. It should not be represented as an official NCAIR model distribution. Verify its license and provenance before redistribution.
 
-## 4. Browser playground
+### Mock runtime
 
-The playground provides a web interface for submitting prompts to the configured runtime.
+`mock` (set `NATLAS_RUNTIME=mock`, or pick it in the UI) performs no inference. It echoes the prompt and the options it received (and returns a placeholder JSON object when a prompt asks for JSON), so you can develop and demo the workbench, the SDK and the evaluation runner with no model or network. Content checks such as `expect_any` or `expect_json` will fail against it by design.
+
+## 4. Building applications
+
+The workbench is meant for developers building applications on N-ATLaS. Read **[docs/building-apps.md](docs/building-apps.md)** for the full guide. In short:
+
+```bash
+pip install -e ".[gradio,server,dev]"          # makes `natlas_sdk` and the `natlas` command available
+natlas new api-service ./my-api                 # or: chat-cli, node-client
+```
+
+```python
+from natlas_sdk import NAtlas
+
+client = NAtlas(runtime_type="gradio", retries=2)
+chat = client.conversation(system="Keep answers short.")
+print(chat.say("Hello"))
+```
+
+* **Prompt apps** (`apps/*.json`) define a task once and run from Python, the command line (`python -m sdk.natlas_sdk run translator -i text="Good morning"`), the browser, or HTTP (`POST /api/apps/{name}/run`).
+* **OpenAI-compatible gateway** (`/v1/chat/completions`, `/v1/models`) lets code in any language, or an existing OpenAI client, use a workbench runtime by changing its base URL. It supports non-streaming chat only. Set `NATLAS_GATEWAY_KEY` to require a bearer token; without it the gateway is open.
+* **Starter projects** (`natlas templates`, `natlas new <template> <dir>`): a terminal chat, a FastAPI service built from your prompt apps, and a Node.js client.
+* **Retries:** `NAtlas(retries=2)` or `NATLAS_RETRIES` retries runtime failures with growing delays; invalid input and missing configuration are never retried.
+
+The workbench has no authentication or rate limiting of its own beyond the optional gateway key. Do not expose it to the internet as it is.
+
+## 5. Browser workbench
+
+The workbench is a web interface with five tabs and a settings column:
+
+* **Playground:** send a prompt to the selected runtime and see the response, latency and length. Includes ready-to-copy snippets (Python SDK, curl, OpenAI client and JavaScript through the gateway) for the current settings, example presets (English, Yoruba, Hausa, Igbo, Pidgin), and a history kept in your browser's local storage.
+* **Chat:** a multi-turn conversation with the selected runtime.
+* **App Builder:** design a reusable prompt app (template with `{{variables}}`, system instruction, text or JSON output), test it, save it to `apps/`, and copy the code to run it from your application.
+* **Compare:** send one prompt to two to four runtimes at once and view the outputs side by side. A runtime that fails shows its own error without hiding the others.
+* **Evaluate:** run a prompt suite from `datasets/prompts/` against the selected runtime, case by case with live progress, a Stop button, pass/fail checks, and a JSON report export.
+* **Settings:** runtime, optional system instruction, temperature (0–2) and max tokens (1–4096). Blank values use the runtime's own defaults.
+
+A runtime shown as configured only means its environment variables are set. Use **Test runtime** to check the service actually responds.
+
+For the Gradio runtime, a system instruction is prepended to the user message, because the community Space's handling of a system role has not been verified. The OpenAI-compatible and local GGUF runtimes send it as a system message.
 
 ### Start the application
 
@@ -116,13 +159,26 @@ The development server must remain running while using the page.
 | ------ | --------------- | ------------------------------------------- |
 | `GET`  | `/`             | Serves the browser playground               |
 | `GET`  | `/api/health`   | Returns a basic application health response |
-| `POST` | `/api/generate` | Submits a prompt to the configured runtime  |
+| `GET`  | `/api/runtimes` | Lists runtimes and whether their environment variables are set |
+| `POST` | `/api/generate` | Submits a prompt to a runtime (default or chosen) |
+| `POST` | `/api/compare`  | Sends one prompt to 2–4 runtimes, returns each outcome |
+| `POST` | `/api/chat`     | Continues a multi-turn conversation |
+| `GET`/`POST`/`DELETE` | `/api/apps` ... | List, read, save, delete and run prompt apps (`POST /api/apps/{name}/run`) |
+| `POST` | `/v1/chat/completions` | OpenAI-compatible chat (non-streaming) |
+| `GET`  | `/v1/models`    | OpenAI-compatible model list |
+| `GET`  | `/api/datasets` | Lists prompt suites |
+| `GET`  | `/api/datasets/{name}` | Returns the cases of one suite |
+| `POST` | `/api/evaluate/case` | Runs and checks one case from a suite, or an inline case |
 
-Example generation request:
+Example generation request (only `prompt` is required):
 
 ```json
 {
-  "prompt": "Explain antimicrobial resistance in one sentence."
+  "prompt": "Explain antimicrobial resistance in one sentence.",
+  "runtime": "gradio",
+  "system": "Answer in one sentence.",
+  "temperature": 0.2,
+  "max_tokens": 200
 }
 ```
 
@@ -130,13 +186,17 @@ Successful response format:
 
 ```json
 {
-  "response": "The generated model response appears here."
+  "response": "The generated model response appears here.",
+  "runtime": "gradio",
+  "latency_ms": 1840
 }
 ```
 
+`/api/compare` takes the same options plus `"runtimes": ["mock", "gradio"]` and returns `{"results": [{"ok": true, "runtime": "...", "response": "...", "latency_ms": 12}, {"ok": false, "runtime": "...", "error": "..."}]}`.
+
 The generation endpoint rejects blank prompts and returns a controlled HTTP error if inference fails. A successful health check confirms that the application responds; it does not independently establish that the model service is available.
 
-## 5. Configuration
+## 6. Configuration
 
 For the community Gradio runtime, configure the endpoint in PowerShell:
 
@@ -148,7 +208,16 @@ The environment variable applies to the current PowerShell session. Set it again
 
 Do not commit API keys, credentials, private endpoints, or other secrets to GitHub.
 
-## 6. Testing
+### Evaluate from the command line
+
+```powershell
+python -m evaluation datasets/prompts/smoke.jsonl --runtime mock
+python -m evaluation datasets/prompts/nigerian-languages.jsonl --runtime gradio --out report.json
+```
+
+The command exits with status 1 when any case fails or errors, so it can be used in scripts. See `datasets/README.md` for the suite format and what the checks do and do not measure.
+
+## 7. Testing
 
 Run the full automated test suite from the project root:
 
@@ -164,6 +233,8 @@ pytest -s tests/test_gradio_live.py
 
 The live test is skipped when `NATLAS_GRADIO_BASE_URL` is not configured.
 
+New tests cover the mock runtime, SDK options and retries, prompt apps, the evaluation runner and bundled suites, the scaffold generator, and the API endpoints including the gateway (`tests/test_mock_runtime.py`, `tests/test_apps.py`, `tests/test_evaluation.py`, `tests/test_scaffold.py`, `tests/test_playground.py`).
+
 ### Recorded verification results
 
 The following checks were observed during development:
@@ -177,9 +248,11 @@ The following checks were observed during development:
 * The live Gradio test subsequently completed with **1 passed in 7.27 seconds**, returning a non-empty model response.
 * A browser playground request subsequently returned a coherent answer to an antimicrobial-resistance prompt.
 
+Those results predate the workbench additions above. Run `pytest -q` to re-verify the current code.
+
 These results establish that the tested integration worked at that time. They do not guarantee future availability of the third-party endpoint.
 
-## 7. Current limitations
+## 8. Current limitations
 
 * The Gradio runtime depends on an externally managed community service.
 * The OpenAI-compatible runtime requires a compatible inference endpoint.
@@ -188,7 +261,7 @@ These results establish that the tested integration worked at that time. They do
 * Dataset management, evaluation workflows, fine-tuning workflows, deployment automation, and production-grade observability should be treated as future work unless independently implemented and tested.
 * The project has not established guaranteed uptime, production scalability, security certification, or a managed public inference service.
 
-## 8. Development principles
+## 9. Development principles
 
 The workbench follows these principles:
 
@@ -198,13 +271,13 @@ The workbench follows these principles:
 4. **Evidence-based documentation:** distinguish implemented code, observed test results, planned functionality, and external dependencies.
 5. **Responsible model use:** check model licensing, provenance, access restrictions, and redistribution terms before distributing model files.
 
-## 9. Repository
+## 10. Repository
 
 GitHub repository:
 
 https://github.com/emmybaba/natlas-developer-workbench
 
-## 10. Project status
+## 11. Project status
 
 N-ATLaS Developer Workbench is an evolving developer infrastructure project. Its current demonstrated capabilities include a Python SDK, configurable runtime integrations, a FastAPI browser playground, and successful tests against a community-hosted inference endpoint.
 
