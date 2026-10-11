@@ -1,0 +1,12 @@
+{
+  "name": "translator",
+  "description": "Translate text into a Nigerian language.",
+  "system": "You are a careful translator. Reply with the translation only, without explanations.",
+  "template": "Translate the following text into {{target_language}}:\n\n{{text}}",
+  "inputs": [
+    {"name": "target_language", "label": "Target language", "default": "Yoruba"},
+    {"name": "text", "label": "Text to translate"}
+  ],
+  "output": {"type": "text"},
+  "options": {"temperature": 0.2, "max_tokens": 400}
+}

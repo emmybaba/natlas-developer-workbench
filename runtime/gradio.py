@@ -3,7 +3,7 @@ import os
 
 from gradio_client import Client
 
-from .base import NAtlasRuntime
+from .base import NAtlasRuntime, compose_prompt
 
 
 class GradioRuntime(NAtlasRuntime):
@@ -33,18 +33,58 @@ class GradioRuntime(NAtlasRuntime):
         self.timeout = timeout
         self._client = None
 
-    def generate(self, prompt: str) -> str:
+    def generate(
+        self,
+        prompt: str,
+        system: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> str:
         """Generate a response through the Gradio client."""
+
+        return self.chat(
+            [{"role": "user", "content": prompt}],
+            system=system,
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+
+    def chat(
+        self,
+        messages: list[dict],
+        system: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> str:
+        """Send a conversation through the Gradio client.
+
+        The community Space's handling of a ``system`` role has not been
+        verified, so a system instruction is folded into the first user
+        message. The Space receives the whole ``messages`` list; whether it
+        makes use of earlier turns depends on that Space.
+        """
 
         if self._client is None:
             self._client = Client(self.base_url)
 
-        messages = [{"role": "user", "content": prompt}]
+        messages = [dict(m) for m in messages]
+
+        if system and system.strip():
+            for message in messages:
+                if message["role"] == "user":
+                    message["content"] = compose_prompt(
+                        message["content"], system
+                    )
+                    break
 
         result = self._client.predict(
             messages_json=json.dumps(messages),
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+            temperature=(
+                self.temperature if temperature is None else temperature
+            ),
+            max_tokens=(
+                self.max_tokens if max_tokens is None else max_tokens
+            ),
             json_mode=self.json_mode,
             api_name="/generate",
         )

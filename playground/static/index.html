@@ -1,96 +1,1004 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>N-ATLaS Developer Playground</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>N-ATLaS Developer Workbench</title>
+<style>
+  :root {
+    --bg: #f6f7f5; --surface: #ffffff; --surface-2: #eef1ee; --text: #1b2420;
+    --muted: #5c6a63; --border: #d9dfdb; --accent: #0b7a4b; --accent-text: #ffffff;
+    --ok: #0b7a4b; --ok-bg: #dff3e8; --bad: #b3261e; --bad-bg: #fbe4e1;
+    --warn: #8a5a00; --warn-bg: #fdf0d2; --radius: 10px;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101613; --surface: #17201b; --surface-2: #1f2a24; --text: #e6ede9;
+      --muted: #9aa9a1; --border: #2c3a32; --accent: #3fbf86; --accent-text: #08170f;
+      --ok: #5fd39f; --ok-bg: #153a28; --bad: #ff8f86; --bad-bg: #3c1b18;
+      --warn: #f0c35a; --warn-bg: #3a2f10; color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  main, aside { min-width: 0; }
+  select { max-width: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--surface);
+    display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline; }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 0; color: var(--muted); font-size: 13px; }
+  .layout { max-width: 1200px; margin: 0 auto; padding: 16px; display: grid; gap: 16px;
+    grid-template-columns: 290px minmax(0, 1fr); align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: minmax(0, 1fr); } main { order: -1; } }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .card h2 { margin: 0 0 10px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 4px; }
+  label:first-child, h2 + label { margin-top: 0; }
+  .hint { font-weight: 400; color: var(--muted); }
+  input, select, textarea, button { font: inherit; color: inherit; }
+  input[type=number], select, textarea { width: 100%; padding: 8px 10px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: 8px; }
+  textarea { resize: vertical; min-height: 120px; }
+  textarea.mono, pre { font-family: var(--mono); font-size: 13px; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button { cursor: pointer; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface-2); }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .55; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  button.small { padding: 4px 10px; font-size: 13px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .grow { flex: 1 1 auto; }
+  .stack > * + * { margin-top: 14px; }
+  .status { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.ok { background: var(--ok); } .dot.warn { background: var(--warn); }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 14px; overflow-x: auto; }
+  .tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 10px 14px; font-weight: 600; color: var(--muted); }
+  .tabs button[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); }
+  [hidden] { display: none !important; }
+  pre { margin: 0; white-space: pre-wrap; word-break: break-word; background: var(--surface-2); border-radius: 8px; padding: 12px; }
+  .meta { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .chip { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); }
+  .badge { font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
+  .badge.pass { background: var(--ok-bg); color: var(--ok); }
+  .badge.fail { background: var(--bad-bg); color: var(--bad); }
+  .badge.error { background: var(--warn-bg); color: var(--warn); }
+  .error-box { background: var(--bad-bg); color: var(--bad); border-radius: 8px; padding: 10px 12px; }
+  .notice { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .cols { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .stats { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); margin: 12px 0; }
+  .stat { background: var(--surface-2); border-radius: 8px; padding: 8px 12px; }
+  .stat b { display: block; font-size: 20px; }
+  .stat span { font-size: 12px; color: var(--muted); }
+  progress { width: 100%; height: 8px; accent-color: var(--accent); }
+  details { border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; }
+  summary { padding: 8px 12px; cursor: pointer; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  details > div { padding: 0 12px 12px; }
+  .hist { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
+  .hist li button { width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; padding: 8px 4px; }
+  .hist .t { color: var(--muted); font-size: 12px; }
+  .hist .p { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 10px; }
+  .chatlog { display: flex; flex-direction: column; gap: 8px; min-height: 160px; max-height: 420px; overflow-y: auto; padding: 4px 2px 12px; }
+  .bubble { max-width: 85%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; word-break: break-word; }
+  .bubble.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-bottom-right-radius: 4px; }
+  .bubble.assistant { align-self: flex-start; background: var(--surface-2); border-bottom-left-radius: 4px; }
+  .bubble small { display: block; opacity: .7; margin-top: 4px; }
+  .field-grid { display: grid; gap: 0 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  code { font-family: var(--mono); font-size: 13px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+</style>
 </head>
-
 <body>
-    <h1>N-ATLaS Developer Playground</h1>
+<header>
+  <h1>N-ATLaS Developer Workbench</h1>
+  <p>Try prompts, compare runtimes, and run prompt suites against N-ATLaS runtimes you have configured.</p>
+</header>
 
-    <p>
-        Test prompts against the N-ATLaS model through the Developer Workbench.
-    </p>
+<div class="layout">
+  <aside class="stack" aria-label="Settings">
+    <section class="card">
+      <h2>Runtime</h2>
+      <label for="runtime">Runtime</label>
+      <select id="runtime"></select>
+      <div class="status" id="runtime-status" aria-live="polite"></div>
+      <button class="small" id="test-runtime" type="button" style="margin-top:10px">Test runtime</button>
+      <div id="test-result" class="sub" style="margin:8px 0 0" aria-live="polite"></div>
+    </section>
 
-    <textarea
-        id="prompt"
-        rows="8"
-        cols="70"
-        placeholder="Enter your prompt here..."
-        aria-label="Enter your prompt"
-    ></textarea>
+    <section class="card">
+      <h2>Generation</h2>
+      <label for="system">System instruction <span class="hint">(optional)</span></label>
+      <textarea id="system" rows="3" style="min-height:70px" placeholder="e.g. Answer in Yoruba."></textarea>
+      <label for="temperature">Temperature <span class="hint">(0–2)</span></label>
+      <input id="temperature" type="number" min="0" max="2" step="0.1" placeholder="runtime default">
+      <label for="max-tokens">Max tokens <span class="hint">(1–4096)</span></label>
+      <input id="max-tokens" type="number" min="1" max="4096" step="1" placeholder="runtime default">
+    </section>
 
-    <br><br>
+    <section class="card">
+      <h2>Presets</h2>
+      <label for="preset" class="hint" style="font-weight:400">Load an example prompt</label>
+      <select id="preset"><option value="">Choose…</option></select>
+    </section>
+  </aside>
 
-    <button id="generate" type="button">
-        Generate Response
-    </button>
+  <main>
+    <div class="tabs" role="tablist" aria-label="Workbench sections">
+      <button role="tab" id="tab-play" aria-controls="panel-play" aria-selected="true">Playground</button>
+      <button role="tab" id="tab-chat" aria-controls="panel-chat" aria-selected="false" tabindex="-1">Chat</button>
+      <button role="tab" id="tab-apps" aria-controls="panel-apps" aria-selected="false" tabindex="-1">App Builder</button>
+      <button role="tab" id="tab-compare" aria-controls="panel-compare" aria-selected="false" tabindex="-1">Compare</button>
+      <button role="tab" id="tab-eval" aria-controls="panel-eval" aria-selected="false" tabindex="-1">Evaluate</button>
+    </div>
 
-    <h2>Response</h2>
+    <!-- Playground -->
+    <section id="panel-play" role="tabpanel" aria-labelledby="tab-play" class="stack">
+      <div class="card">
+        <label for="prompt">Prompt</label>
+        <textarea id="prompt" class="mono" placeholder="Enter your prompt here… (Ctrl/⌘ + Enter to generate)"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="generate" type="button">Generate</button>
+          <span class="hint" id="gen-hint"></span>
+        </div>
+      </div>
 
-    <pre id="response" aria-live="polite"></pre>
+      <div class="card" aria-live="polite">
+        <h2>Response</h2>
+        <div id="response-empty" class="sub">No response yet.</div>
+        <div id="response-error" class="error-box" hidden></div>
+        <div id="response-ok" hidden>
+          <div class="meta" id="response-meta"></div>
+          <pre id="response-text"></pre>
+          <div class="row" style="margin-top:10px">
+            <button class="small" id="copy-response" type="button">Copy response</button>
+          </div>
+        </div>
+      </div>
 
-    <script>
-        const button = document.getElementById("generate");
-        const promptInput = document.getElementById("prompt");
-        const responseBox = document.getElementById("response");
+      <div class="card">
+        <h2>Use this in code</h2>
+        <div class="row" style="margin-bottom:8px">
+          <label for="snippet-kind" style="margin:0">Snippet</label>
+          <select id="snippet-kind" style="width:auto">
+            <option value="python">Python SDK</option>
+            <option value="curl">curl (workbench API)</option>
+            <option value="openai">Python: OpenAI client via gateway</option>
+            <option value="js">JavaScript: fetch via gateway</option>
+          </select>
+          <button class="small" id="copy-snippet" type="button">Copy</button>
+        </div>
+        <pre id="snippet"></pre>
+      </div>
 
-        button.addEventListener("click", async () => {
-            const prompt = promptInput.value.trim();
+      <div class="card">
+        <div class="row"><h2 class="grow" style="margin:0">History <span class="hint">(this browser only)</span></h2>
+          <button class="small" id="export-history" type="button">Export</button>
+          <button class="small" id="clear-history" type="button">Clear</button>
+        </div>
+        <ul class="hist" id="history"></ul>
+        <div class="sub" id="history-empty" style="margin-top:10px">Responses you generate are listed here.</div>
+      </div>
+    </section>
 
-            if (!prompt) {
-                responseBox.textContent = "Please enter a prompt.";
-                return;
-            }
+    <!-- Chat -->
+    <section id="panel-chat" role="tabpanel" aria-labelledby="tab-chat" class="stack" hidden>
+      <div class="card">
+        <div class="row"><h2 class="grow" style="margin:0">Conversation</h2>
+          <button class="small" id="chat-reset" type="button">New conversation</button></div>
+        <p class="sub" style="margin-top:8px">Uses the runtime and settings on the left. The whole history is sent each turn; whether a service makes use of earlier turns depends on that service.</p>
+        <div class="chatlog" id="chat-log" aria-live="polite"><div class="sub" id="chat-empty">Say something to start.</div></div>
+        <label for="chat-input">Message</label>
+        <textarea id="chat-input" rows="3" style="min-height:70px" placeholder="Type a message… (Ctrl/⌘ + Enter to send)"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="chat-send" type="button">Send</button>
+          <span class="hint" id="chat-hint" aria-live="polite"></span>
+        </div>
+      </div>
+    </section>
 
-            button.disabled = true;
-            responseBox.textContent = "Generating...";
+    <!-- App Builder -->
+    <section id="panel-apps" role="tabpanel" aria-labelledby="tab-apps" class="stack" hidden>
+      <div class="card">
+        <p class="sub">A <strong>prompt app</strong> is one N-ATLaS task saved as a JSON file in <code>apps/</code>: a prompt template with <code>{{variables}}</code>, an optional system instruction, and an output format. Test it here, then call the same file from Python, the command line, or the HTTP API.</p>
+        <div class="row">
+          <label for="app-select" style="margin:0">Saved apps</label>
+          <select id="app-select" style="width:auto;min-width:220px"></select>
+          <button id="app-new" type="button">New app</button>
+        </div>
+        <div class="notice" id="app-problems" hidden style="margin-top:10px"></div>
+      </div>
 
-            try {
-                const response = await fetch("/api/generate", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        prompt: prompt
-                    })
-                });
+      <div class="card">
+        <div class="field-grid">
+          <div><label for="app-name">Name <span class="hint">(lowercase, digits, hyphens)</span></label>
+            <input id="app-name" type="text" maxlength="48" autocomplete="off" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px"></div>
+          <div><label for="app-desc">Description</label>
+            <input id="app-desc" type="text" maxlength="300" autocomplete="off" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px"></div>
+        </div>
+        <label for="app-system">System instruction <span class="hint">(optional)</span></label>
+        <textarea id="app-system" style="min-height:70px" rows="3"></textarea>
+        <label for="app-template">Prompt template <span class="hint">use {{name}} for each input</span></label>
+        <textarea id="app-template" class="mono" rows="6"></textarea>
+        <div class="field-grid">
+          <div><label for="app-output">Output</label>
+            <select id="app-output"><option value="text">Plain text</option><option value="json">JSON object</option></select></div>
+          <div id="app-keys-wrap" hidden><label for="app-keys">Required JSON keys <span class="hint">(comma-separated)</span></label>
+            <input id="app-keys" type="text" autocomplete="off" style="width:100%;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:8px"></div>
+          <div><label for="app-temp">Temperature <span class="hint">(blank = runtime default)</span></label>
+            <input id="app-temp" type="number" min="0" max="2" step="0.1"></div>
+          <div><label for="app-maxtok">Max tokens</label>
+            <input id="app-maxtok" type="number" min="1" max="4096" step="1"></div>
+        </div>
 
-                let data;
+        <h2 style="margin-top:18px">Test inputs</h2>
+        <div id="app-inputs"><div class="sub">Add <code>{{variables}}</code> to the template and an input appears here for each.</div></div>
 
-                try {
-                    data = await response.json();
-                } catch {
-                    throw new Error(
-                        `Server returned an unexpected response (HTTP ${response.status}).`
-                    );
-                }
+        <div class="row" style="margin-top:14px">
+          <button class="primary" id="app-run" type="button">Run test</button>
+          <button id="app-preview" type="button">Preview prompt</button>
+          <button id="app-save" type="button">Save app</button>
+          <button id="app-download" type="button">Download JSON</button>
+          <button id="app-delete" type="button" disabled>Delete</button>
+        </div>
+        <div class="sub" id="app-status" aria-live="polite" style="margin:10px 0 0"></div>
+      </div>
 
-                if (!response.ok) {
-                    throw new Error(
-                        data.detail ||
-                        data.message ||
-                        `Request failed (HTTP ${response.status}).`
-                    );
-                }
+      <div class="card" id="app-result-card" hidden aria-live="polite">
+        <h2 id="app-result-title">Result</h2>
+        <div class="meta" id="app-result-meta"></div>
+        <div id="app-result"></div>
+      </div>
 
-                if (typeof data.response !== "string") {
-                    throw new Error(
-                        "The server response did not contain generated text."
-                    );
-                }
+      <div class="card">
+        <h2>Use this app in your code</h2>
+        <div class="row" style="margin-bottom:8px">
+          <label for="app-snippet-kind" style="margin:0">Snippet</label>
+          <select id="app-snippet-kind" style="width:auto">
+            <option value="python">Python SDK</option>
+            <option value="curl">curl (workbench API)</option>
+            <option value="cli">Command line</option>
+          </select>
+          <button class="small" id="app-copy-snippet" type="button">Copy</button>
+        </div>
+        <pre id="app-snippet"></pre>
+        <p class="sub" style="margin:10px 0 0" id="app-snippet-note"></p>
+      </div>
+    </section>
 
-                responseBox.textContent = data.response;
+    <!-- Compare -->
+    <section id="panel-compare" role="tabpanel" aria-labelledby="tab-compare" class="stack" hidden>
+      <div class="card">
+        <p class="sub">Send one prompt to two to four runtimes at once. System instruction, temperature and max tokens come from the settings on the left.</p>
+        <fieldset style="border:0;padding:0;margin:0 0 12px">
+          <legend class="hint" style="padding:0;margin-bottom:6px">Runtimes to compare</legend>
+          <div class="row" id="compare-runtimes"></div>
+        </fieldset>
+        <label for="compare-prompt">Prompt</label>
+        <textarea id="compare-prompt" class="mono" placeholder="Enter a prompt…"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" id="compare-run" type="button">Compare</button>
+          <span class="hint" id="compare-hint"></span>
+        </div>
+      </div>
+      <div class="cols" id="compare-results" aria-live="polite"></div>
+    </section>
 
-            } catch (error) {
-                responseBox.textContent = "Error: " + error.message;
+    <!-- Evaluate -->
+    <section id="panel-eval" role="tabpanel" aria-labelledby="tab-eval" class="stack" hidden>
+      <div class="card">
+        <p class="sub">Run a prompt suite from <code>datasets/prompts/</code> against the selected runtime. Checks are simple assertions (non-empty, substrings, length, JSON). They do not score translation quality or accuracy: read the responses yourself.</p>
+        <div class="row">
+          <label for="dataset" style="margin:0">Suite</label>
+          <select id="dataset" style="width:auto;min-width:220px"></select>
+          <button class="primary" id="eval-run" type="button">Run suite</button>
+          <button id="eval-stop" type="button" disabled>Stop</button>
+          <button id="eval-export" type="button" disabled>Export report</button>
+        </div>
+        <progress id="eval-progress" value="0" max="1" style="margin-top:12px" hidden></progress>
+        <div class="sub" id="eval-status" aria-live="polite" style="margin:8px 0 0"></div>
+      </div>
+      <div class="card" id="eval-summary-card" hidden>
+        <h2>Summary</h2>
+        <div class="stats" id="eval-summary"></div>
+        <div id="eval-results"></div>
+      </div>
+    </section>
+  </main>
+</div>
 
-            } finally {
-                button.disabled = false;
-            }
-        });
-    </script>
+<script>
+(() => {
+  "use strict";
+
+  const $ = (selector) => document.querySelector(selector);
+
+  function el(tag, props, ...children) {
+    const node = document.createElement(tag);
+    Object.entries(props || {}).forEach(([key, value]) => {
+      if (key === "class") node.className = value; else node[key] = value;
+    });
+    children.flat().forEach((child) => {
+      if (child == null) return;
+      node.append(child.nodeType ? child : document.createTextNode(String(child)));
+    });
+    return node;
+  }
+
+  const store = {
+    get(key, fallback) {
+      try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) : fallback; }
+      catch { return fallback; }
+    },
+    set(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* storage unavailable */ }
+    },
+  };
+
+  async function api(path, body) {
+    let response;
+    try {
+      response = await fetch(path, body === undefined ? {} : {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch {
+      throw new Error("Could not reach the workbench server. Is it still running?");
+    }
+    let data;
+    try { data = await response.json(); }
+    catch { throw new Error(`Unexpected server response (HTTP ${response.status}).`); }
+    if (!response.ok) {
+      let detail = data.detail || data.message;
+      if (Array.isArray(detail)) detail = detail.map((d) => `${(d.loc || []).slice(1).join(".")}: ${d.msg}`).join("; ");
+      throw new Error(detail || `Request failed (HTTP ${response.status}).`);
+    }
+    return data;
+  }
+
+  /* ---------- settings ---------- */
+  let runtimes = [];
+
+  function options() {
+    const out = { runtime: $("#runtime").value };
+    const system = $("#system").value.trim();
+    const temperature = $("#temperature").value;
+    const maxTokens = $("#max-tokens").value;
+    if (system) out.system = system;
+    if (temperature !== "") out.temperature = Number(temperature);
+    if (maxTokens !== "") out.max_tokens = Number(maxTokens);
+    return out;
+  }
+
+  function saveSettings() {
+    store.set("natlas-wb-settings", {
+      runtime: $("#runtime").value, system: $("#system").value,
+      temperature: $("#temperature").value, maxTokens: $("#max-tokens").value,
+    });
+  }
+
+  function renderRuntimeStatus() {
+    const runtime = runtimes.find((r) => r.id === $("#runtime").value);
+    const box = $("#runtime-status");
+    box.replaceChildren();
+    if (!runtime) return;
+    box.append(
+      el("span", { class: "dot " + (runtime.configured ? "ok" : "warn") }),
+      runtime.configured
+        ? "Configuration found. Use “Test runtime” to confirm the service responds."
+        : "Not configured. Set: " + runtime.missing_env.join(", ")
+    );
+  }
+
+  async function loadRuntimes() {
+    const data = await api("/api/runtimes");
+    runtimes = data.runtimes;
+    const saved = store.get("natlas-wb-settings", {});
+    const select = $("#runtime");
+    select.replaceChildren(...runtimes.map((r) =>
+      el("option", { value: r.id }, r.label + (r.configured ? "" : " (not configured)"))));
+    const usable = runtimes.find((r) => r.id === saved.runtime) ||
+      runtimes.find((r) => r.default && r.configured) ||
+      runtimes.find((r) => r.configured) || runtimes[0];
+    select.value = usable.id;
+    if (saved.system) $("#system").value = saved.system;
+    if (saved.temperature) $("#temperature").value = saved.temperature;
+    if (saved.maxTokens) $("#max-tokens").value = saved.maxTokens;
+    renderRuntimeStatus();
+    renderCompareRuntimes();
+    updateSnippet();
+    updateAppSnippet();
+  }
+
+  /* ---------- tabs ---------- */
+  const tabs = ["play", "chat", "apps", "compare", "eval"];
+  function showTab(name) {
+    tabs.forEach((tab) => {
+      const selected = tab === name;
+      $("#tab-" + tab).setAttribute("aria-selected", selected);
+      $("#tab-" + tab).tabIndex = selected ? 0 : -1;
+      $("#panel-" + tab).hidden = !selected;
+    });
+  }
+  tabs.forEach((tab, index) => {
+    $("#tab-" + tab).addEventListener("click", () => showTab(tab));
+    $("#tab-" + tab).addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+      const next = tabs[(index + (event.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+      showTab(next); $("#tab-" + next).focus();
+    });
+  });
+
+  /* ---------- playground ---------- */
+  let lastResult = null;
+
+  function setBusy(button, busy, label) {
+    button.disabled = busy;
+    if (label) button.textContent = busy ? label.busy : label.idle;
+  }
+
+  function showResponse(result) {
+    lastResult = result;
+    $("#response-empty").hidden = true;
+    $("#response-error").hidden = true;
+    $("#response-ok").hidden = false;
+    $("#response-meta").replaceChildren(
+      el("span", { class: "chip" }, "runtime: " + result.runtime),
+      el("span", { class: "chip" }, result.latency_ms + " ms"),
+      el("span", { class: "chip" }, result.response.length + " characters"));
+    $("#response-text").textContent = result.response;
+  }
+
+  function showError(message) {
+    $("#response-empty").hidden = true;
+    $("#response-ok").hidden = true;
+    $("#response-error").hidden = false;
+    $("#response-error").textContent = message;
+  }
+
+  async function generate() {
+    const prompt = $("#prompt").value.trim();
+    if (!prompt) { showError("Please enter a prompt."); return; }
+    const button = $("#generate");
+    setBusy(button, true, { busy: "Generating…", idle: "Generate" });
+    try {
+      const body = { prompt, ...options() };
+      const result = await api("/api/generate", body);
+      showResponse(result);
+      addHistory({ time: Date.now(), prompt, system: body.system || "", ...result });
+    } catch (error) {
+      showError(error.message);
+    } finally {
+      setBusy(button, false, { busy: "Generating…", idle: "Generate" });
+    }
+  }
+  $("#generate").addEventListener("click", generate);
+  $("#prompt").addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") generate();
+  });
+  $("#prompt").addEventListener("input", updateSnippet);
+
+  async function copy(text, button) {
+    try { await navigator.clipboard.writeText(text); button.textContent = "Copied"; }
+    catch { button.textContent = "Copy failed"; }
+    setTimeout(() => { button.textContent = button.dataset.label; }, 1500);
+  }
+  document.querySelectorAll("button.small").forEach((b) => { b.dataset.label = b.textContent; });
+  $("#copy-response").addEventListener("click", (event) => lastResult && copy(lastResult.response, event.currentTarget));
+  $("#copy-snippet").addEventListener("click", (event) => copy($("#snippet").textContent, event.currentTarget));
+
+  $("#test-runtime").addEventListener("click", async () => {
+    const out = $("#test-result");
+    const button = $("#test-runtime");
+    out.textContent = "Testing…";
+    button.disabled = true;
+    try {
+      const result = await api("/api/generate", { prompt: "Reply with the single word: ready", runtime: $("#runtime").value, max_tokens: 16 });
+      out.textContent = `Responded in ${result.latency_ms} ms.`;
+    } catch (error) {
+      out.textContent = "Failed: " + error.message;
+    } finally { button.disabled = false; }
+  });
+
+  for (const id of ["runtime", "system", "temperature", "max-tokens"]) {
+    $("#" + id).addEventListener("input", () => { saveSettings(); updateSnippet(); });
+  }
+  $("#runtime").addEventListener("change", renderRuntimeStatus);
+
+  /* ---------- code snippets ---------- */
+  const shellQuote = (text) => "'" + text.replace(/'/g, "'\\''") + "'";
+
+  function updateSnippet() {
+    const prompt = $("#prompt").value.trim() || "Your prompt here";
+    const opts = options();
+    const kind = $("#snippet-kind").value;
+    let text;
+    if (kind === "python") {
+      const args = [JSON.stringify(prompt)];
+      if (opts.system) args.push("system=" + JSON.stringify(opts.system));
+      if (opts.temperature !== undefined) args.push("temperature=" + opts.temperature);
+      if (opts.max_tokens !== undefined) args.push("max_tokens=" + opts.max_tokens);
+      text = "from sdk.natlas_sdk import NAtlas\n\n" +
+        `client = NAtlas(runtime_type=${JSON.stringify(opts.runtime || "gradio")})\n` +
+        `print(client.generate(\n    ${args.join(",\n    ")},\n))`;
+    } else if (kind === "openai" || kind === "js") {
+      const messages = [];
+      if (opts.system) messages.push({ role: "system", content: opts.system });
+      messages.push({ role: "user", content: prompt });
+      const model = "natlas-" + (opts.runtime || "gradio");
+      const extra = [];
+      if (opts.temperature !== undefined) extra.push(["temperature", opts.temperature]);
+      if (opts.max_tokens !== undefined) extra.push(["max_tokens", opts.max_tokens]);
+      if (kind === "openai") {
+        text = "from openai import OpenAI\n\n" +
+          `client = OpenAI(base_url="${location.origin}/v1", api_key="not-needed")  # key only if NATLAS_GATEWAY_KEY is set\n` +
+          "reply = client.chat.completions.create(\n" +
+          `    model=${JSON.stringify(model)},\n    messages=${JSON.stringify(messages)},\n` +
+          extra.map(([k, v]) => `    ${k}=${v},\n`).join("") + ")\n" +
+          "print(reply.choices[0].message.content)";
+      } else {
+        const body = JSON.stringify({ model, messages, ...Object.fromEntries(extra) }, null, 2);
+        text = `const response = await fetch("${location.origin}/v1/chat/completions", {\n` +
+          '  method: "POST",\n  headers: { "Content-Type": "application/json" },\n' +
+          `  body: JSON.stringify(${body.replace(/\n/g, "\n  ")}),\n});\n` +
+          "const data = await response.json();\nconsole.log(data.choices[0].message.content);";
+      }
+    } else {
+      text = `curl -s ${location.origin}/api/generate \\\n  -H 'Content-Type: application/json' \\\n  -d ${shellQuote(JSON.stringify({ prompt, ...opts }))}`;
+    }
+    $("#snippet").textContent = text;
+  }
+  $("#snippet-kind").addEventListener("change", updateSnippet);
+
+  /* ---------- history ---------- */
+  let history = store.get("natlas-wb-history", []);
+
+  function renderHistory() {
+    $("#history-empty").hidden = history.length > 0;
+    $("#history").replaceChildren(...history.map((item) => {
+      const button = el("button", { type: "button" },
+        el("span", { class: "t" }, new Date(item.time).toLocaleString() + " · " + item.runtime + " · " + item.latency_ms + " ms"),
+        el("span", { class: "p" }, item.prompt));
+      button.addEventListener("click", () => {
+        $("#prompt").value = item.prompt;
+        $("#system").value = item.system || "";
+        showResponse(item);
+        updateSnippet();
+      });
+      return el("li", null, button);
+    }));
+  }
+  function addHistory(item) {
+    history = [item, ...history].slice(0, 50);
+    store.set("natlas-wb-history", history);
+    renderHistory();
+  }
+  $("#clear-history").addEventListener("click", () => { history = []; store.set("natlas-wb-history", history); renderHistory(); });
+  function download(name, data) {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+    const link = el("a", { href: url, download: name });
+    document.body.append(link); link.click(); link.remove(); URL.revokeObjectURL(url);
+  }
+  $("#export-history").addEventListener("click", () => download("natlas-history.json", history));
+
+  /* ---------- presets ---------- */
+  const presets = [
+    { label: "English: antimicrobial resistance", prompt: "Explain antimicrobial resistance in one sentence." },
+    { label: "Yoruba: translate a greeting", prompt: "Translate into Yoruba: Good morning, how are you?" },
+    { label: "Hausa: translate a greeting", prompt: "Translate into Hausa: Good morning, how are you?" },
+    { label: "Igbo: translate a greeting", prompt: "Translate into Igbo: Good morning, how are you?" },
+    { label: "Pidgin: translate a sentence", prompt: "Translate into Nigerian Pidgin: Please come early tomorrow, the meeting starts at nine." },
+    { label: "Hausa: question in Hausa", prompt: "Menene babban birnin Najeriya?" },
+    { label: "System instruction demo", prompt: "Say hello.", system: "You are a concise assistant. Answer in one short sentence." },
+  ];
+  $("#preset").append(...presets.map((p, i) => el("option", { value: i }, p.label)));
+  $("#preset").addEventListener("change", (event) => {
+    const preset = presets[event.target.value];
+    if (!preset) return;
+    $("#prompt").value = preset.prompt;
+    $("#compare-prompt").value = preset.prompt;
+    if (preset.system !== undefined) $("#system").value = preset.system;
+    event.target.value = "";
+    saveSettings(); updateSnippet();
+  });
+
+  /* ---------- compare ---------- */
+  function renderCompareRuntimes() {
+    $("#compare-runtimes").replaceChildren(...runtimes.map((r) => {
+      const box = el("input", { type: "checkbox", value: r.id, checked: r.configured && r.id !== "mock" ? true : false });
+      return el("label", { class: "row", style: "margin:0;font-weight:400;gap:4px" }, box, r.label);
+    }));
+    const checked = [...document.querySelectorAll("#compare-runtimes input:checked")];
+    if (checked.length < 2) {
+      const mock = document.querySelector('#compare-runtimes input[value="mock"]');
+      if (mock) mock.checked = true;
+      const first = document.querySelector("#compare-runtimes input:not(:checked)");
+      if (first && document.querySelectorAll("#compare-runtimes input:checked").length < 2) first.checked = true;
+    }
+  }
+
+  $("#compare-run").addEventListener("click", async () => {
+    const prompt = $("#compare-prompt").value.trim();
+    const chosen = [...document.querySelectorAll("#compare-runtimes input:checked")].map((box) => box.value);
+    const hint = $("#compare-hint");
+    hint.textContent = "";
+    if (!prompt) { hint.textContent = "Please enter a prompt."; return; }
+    if (chosen.length < 2 || chosen.length > 4) { hint.textContent = "Choose between two and four runtimes."; return; }
+    const button = $("#compare-run");
+    setBusy(button, true, { busy: "Comparing…", idle: "Compare" });
+    $("#compare-results").replaceChildren();
+    try {
+      const { runtime: _ignored, ...shared } = options();
+      const data = await api("/api/compare", { prompt, runtimes: chosen, ...shared });
+      $("#compare-results").replaceChildren(...data.results.map((result) => {
+        const label = (runtimes.find((r) => r.id === result.runtime) || {}).label || result.runtime;
+        return el("div", { class: "card" },
+          el("h2", null, label),
+          result.ok
+            ? [el("div", { class: "meta" }, el("span", { class: "chip" }, result.latency_ms + " ms"),
+                el("span", { class: "chip" }, result.response.length + " characters")),
+               el("pre", null, result.response)]
+            : el("div", { class: "error-box" }, result.error));
+      }));
+    } catch (error) {
+      hint.textContent = error.message;
+    } finally { setBusy(button, false, { busy: "Comparing…", idle: "Compare" }); }
+  });
+
+  /* ---------- evaluate ---------- */
+  let evalResults = [];
+  let evalStop = false;
+
+  async function loadDatasets() {
+    const data = await api("/api/datasets");
+    const select = $("#dataset");
+    select.replaceChildren(...data.datasets.map((d) =>
+      el("option", { value: d.name }, `${d.name} (${d.cases ?? "?"} cases)`)));
+    if (!data.datasets.length) select.append(el("option", { value: "" }, "No suites found"));
+  }
+
+  function renderSummary() {
+    const total = evalResults.length;
+    const passed = evalResults.filter((r) => r.passed).length;
+    const errors = evalResults.filter((r) => r.error).length;
+    const latencies = evalResults.map((r) => r.latency_ms).filter((n) => n != null);
+    const avg = latencies.length ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : "–";
+    const stat = (value, label) => el("div", { class: "stat" }, el("b", null, value), el("span", null, label));
+    $("#eval-summary").replaceChildren(
+      stat(`${passed}/${total}`, "passed"), stat(total - passed - errors, "failed checks"),
+      stat(errors, "errors"), stat(avg === "–" ? avg : avg + " ms", "average latency"));
+  }
+
+  function renderResult(result) {
+    const state = result.error ? "error" : result.passed ? "pass" : "fail";
+    const failed = result.checks.filter((c) => !c.passed);
+    return el("details", null,
+      el("summary", null,
+        el("span", { class: "badge " + state }, state.toUpperCase()),
+        el("strong", null, result.id),
+        ...result.tags.map((tag) => el("span", { class: "chip" }, tag)),
+        el("span", { class: "chip" }, result.latency_ms + " ms")),
+      el("div", null,
+        el("label", null, "Prompt"), el("pre", null, result.prompt),
+        el("label", null, "Response"),
+        result.error ? el("div", { class: "error-box" }, result.error) : el("pre", null, result.response),
+        failed.length ? el("div", { class: "notice", style: "margin-top:8px" },
+          failed.map((c) => `${c.check}: ${c.detail}`).join(" · ")) : null));
+  }
+
+  $("#eval-run").addEventListener("click", async () => {
+    const name = $("#dataset").value;
+    if (!name) return;
+    const runBtn = $("#eval-run");
+    evalResults = []; evalStop = false;
+    runBtn.disabled = true; $("#eval-stop").disabled = false; $("#eval-export").disabled = true;
+    $("#eval-results").replaceChildren();
+    $("#eval-summary-card").hidden = false;
+    const bar = $("#eval-progress");
+    const status = $("#eval-status");
+    const { runtime, ...rest } = options();
+    try {
+      const { cases } = await api("/api/datasets/" + encodeURIComponent(name));
+      bar.hidden = false; bar.max = cases.length; bar.value = 0;
+      for (const [index, testCase] of cases.entries()) {
+        if (evalStop) break;
+        status.textContent = `Running ${index + 1} of ${cases.length}: ${testCase.id}`;
+        let result;
+        try {
+          result = await api("/api/evaluate/case", { dataset: name, case_id: testCase.id, runtime, ...rest });
+        } catch (error) {
+          result = { id: testCase.id, prompt: testCase.prompt, tags: testCase.tags || [], response: null,
+            error: error.message, latency_ms: null, checks: [], passed: false };
+        }
+        evalResults.push(result);
+        bar.value = index + 1;
+        $("#eval-results").append(renderResult(result));
+        renderSummary();
+      }
+      status.textContent = evalStop ? `Stopped after ${evalResults.length} of ${cases.length} cases.` : `Finished ${cases.length} cases on runtime “${runtime}”.`;
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      runBtn.disabled = false; $("#eval-stop").disabled = true;
+      $("#eval-export").disabled = evalResults.length === 0;
+    }
+  });
+  $("#eval-stop").addEventListener("click", () => { evalStop = true; });
+  $("#eval-export").addEventListener("click", () => download("natlas-evaluation.json", { dataset: $("#dataset").value, runtime: $("#runtime").value, results: evalResults }));
+
+  /* ---------- chat ---------- */
+  let chatHistory = [];
+
+  function renderChat(pendingNote) {
+    const log = $("#chat-log");
+    log.replaceChildren(...(chatHistory.length ? chatHistory.map((m) =>
+      el("div", { class: "bubble " + m.role }, m.content,
+        m.meta ? el("small", null, m.meta) : null))
+      : [el("div", { class: "sub", id: "chat-empty" }, "Say something to start.")]));
+    if (pendingNote) log.append(el("div", { class: "sub" }, pendingNote));
+    log.scrollTop = log.scrollHeight;
+  }
+
+  async function sendChat() {
+    const input = $("#chat-input");
+    const text = input.value.trim();
+    const hint = $("#chat-hint");
+    hint.textContent = "";
+    if (!text) { hint.textContent = "Type a message first."; return; }
+    const button = $("#chat-send");
+    setBusy(button, true, { busy: "Sending…", idle: "Send" });
+    const messages = [...chatHistory.map(({ role, content }) => ({ role, content })), { role: "user", content: text }];
+    chatHistory.push({ role: "user", content: text });
+    input.value = "";
+    renderChat("Thinking…");
+    try {
+      const result = await api("/api/chat", { messages, ...options() });
+      chatHistory.push({ role: "assistant", content: result.response, meta: `${result.runtime} · ${result.latency_ms} ms` });
+      renderChat();
+    } catch (error) {
+      chatHistory.pop();            // keep history consistent with what the server saw
+      input.value = text;           // let the user retry without retyping
+      renderChat();
+      hint.textContent = error.message;
+    } finally { setBusy(button, false, { busy: "Sending…", idle: "Send" }); input.focus(); }
+  }
+  $("#chat-send").addEventListener("click", sendChat);
+  $("#chat-input").addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") sendChat();
+  });
+  $("#chat-reset").addEventListener("click", () => { chatHistory = []; $("#chat-hint").textContent = ""; renderChat(); });
+
+  /* ---------- app builder ---------- */
+  const VARIABLE = /{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}/g;
+  const app = { savedName: null, inputsMeta: [], options: {}, testValues: {} };
+  const NEW_APP = {
+    name: "my-app", description: "Greets someone in the language you choose.",
+    system: "You are a friendly assistant. Reply in one short sentence.",
+    template: "Greet {{person}} in {{language}}.",
+    inputs: [{ name: "language", default: "Hausa" }],
+  };
+
+  function detectVariables() {
+    const found = [];
+    for (const text of [$("#app-system").value, $("#app-template").value]) {
+      for (const match of text.matchAll(VARIABLE)) if (!found.includes(match[1])) found.push(match[1]);
+    }
+    return found;
+  }
+
+  function metaFor(name) { return app.inputsMeta.find((i) => i.name === name) || {}; }
+
+  function renderAppInputs() {
+    const names = detectVariables();
+    // keep whatever the user already typed
+    document.querySelectorAll("#app-inputs textarea").forEach((box) => { app.testValues[box.dataset.name] = box.value; });
+    const box = $("#app-inputs");
+    if (!names.length) {
+      box.replaceChildren(el("div", { class: "sub" }, "This template has no {{variables}}, so the app takes no inputs."));
+    } else {
+      box.replaceChildren(el("div", { class: "field-grid" }, names.map((name) => {
+        const meta = metaFor(name);
+        const area = el("textarea", { id: "app-input-" + name, rows: 2, style: "min-height:60px" });
+        area.dataset.name = name;
+        area.value = name in app.testValues ? app.testValues[name] : (meta.default ?? "");
+        return el("div", null,
+          el("label", { htmlFor: area.id }, meta.label || name, " ",
+            el("span", { class: "hint" }, meta.default !== undefined ? `(default: ${meta.default})` : "(required)")),
+          area);
+      })));
+    }
+    updateAppSnippet();
+  }
+
+  function testInputs() {
+    const values = {};
+    document.querySelectorAll("#app-inputs textarea").forEach((box) => { values[box.dataset.name] = box.value; });
+    return values;
+  }
+
+  function specFromForm() {
+    const spec = { name: $("#app-name").value.trim(), template: $("#app-template").value };
+    const description = $("#app-desc").value.trim();
+    const system = $("#app-system").value.trim();
+    if (description) spec.description = description;
+    if (system) spec.system = system;
+    const names = detectVariables();
+    const inputs = app.inputsMeta.filter((i) => names.includes(i.name));
+    if (inputs.length) spec.inputs = inputs;
+    spec.output = { type: $("#app-output").value };
+    if (spec.output.type === "json") {
+      const keys = $("#app-keys").value.split(",").map((k) => k.trim()).filter(Boolean);
+      if (keys.length) spec.output.keys = keys;
+    }
+    const options = { ...app.options };
+    for (const [field, id, convert] of [["temperature", "#app-temp", Number], ["max_tokens", "#app-maxtok", Number]]) {
+      const raw = $(id).value;
+      if (raw === "") delete options[field]; else options[field] = convert(raw);
+    }
+    if (Object.keys(options).length) spec.options = options;
+    return spec;
+  }
+
+  function fillForm(spec) {
+    $("#app-name").value = spec.name || "";
+    $("#app-desc").value = spec.description || "";
+    $("#app-system").value = spec.system || "";
+    $("#app-template").value = spec.template || "";
+    $("#app-output").value = (spec.output || {}).type || "text";
+    $("#app-keys").value = ((spec.output || {}).keys || []).join(", ");
+    $("#app-keys-wrap").hidden = $("#app-output").value !== "json";
+    app.options = { ...(spec.options || {}) };
+    $("#app-temp").value = app.options.temperature ?? "";
+    $("#app-maxtok").value = app.options.max_tokens ?? "";
+    app.inputsMeta = (spec.inputs || []).map((i) => ({ ...i }));
+    app.testValues = {};
+    $("#app-result-card").hidden = true;
+    renderAppInputs();
+  }
+
+  function setAppStatus(text) { $("#app-status").textContent = text; }
+
+  async function loadApps(selectName) {
+    const data = await api("/api/apps");
+    const select = $("#app-select");
+    select.replaceChildren(el("option", { value: "" }, data.apps.length ? "Choose an app…" : "No saved apps yet"),
+      ...data.apps.map((a) => el("option", { value: a.name }, a.name + (a.description ? " — " + a.description : ""))));
+    select.value = selectName || "";
+    const problems = Object.entries(data.problems || {});
+    $("#app-problems").hidden = !problems.length;
+    $("#app-problems").textContent = problems.map(([file, why]) => `${file}: ${why}`).join(" · ");
+  }
+
+  async function openApp(name) {
+    if (!name) return;
+    try {
+      const data = await api("/api/apps/" + encodeURIComponent(name));
+      app.savedName = name;
+      fillForm(data.spec);
+      $("#app-delete").disabled = false;
+      setAppStatus(`Loaded “${name}”.`);
+    } catch (error) { setAppStatus(error.message); }
+  }
+
+  function newApp() {
+    app.savedName = null;
+    $("#app-select").value = "";
+    $("#app-delete").disabled = true;
+    fillForm(NEW_APP);
+    setAppStatus("New app. Edit it, test it, then save.");
+  }
+
+  function showAppResult(outcome, title) {
+    $("#app-result-card").hidden = false;
+    $("#app-result-title").textContent = title;
+    const meta = $("#app-result-meta");
+    const box = $("#app-result");
+    meta.replaceChildren(); box.replaceChildren();
+    if (outcome.ok === false) {
+      box.append(el("div", { class: "error-box" }, outcome.error));
+      if (outcome.raw) box.append(el("label", null, "Raw model reply"), el("pre", null, outcome.raw));
+      return;
+    }
+    if (outcome.runtime) meta.append(el("span", { class: "chip" }, "runtime: " + outcome.runtime));
+    if (outcome.latency_ms !== undefined) meta.append(el("span", { class: "chip" }, outcome.latency_ms + " ms"));
+    if (outcome.attempts > 1) meta.append(el("span", { class: "chip" }, outcome.attempts + " attempts"));
+    if (outcome.output !== undefined) {
+      box.append(el("pre", null, typeof outcome.output === "string" ? outcome.output : JSON.stringify(outcome.output, null, 2)));
+    }
+    if (outcome.prompt !== undefined) {
+      box.append(el("label", null, "Prompt sent"), el("pre", null, outcome.prompt));
+      if (outcome.system) box.append(el("label", null, "System instruction"), el("pre", null, outcome.system));
+    }
+  }
+
+  async function appAction(button, busyLabel, idleLabel, work) {
+    setBusy(button, true, { busy: busyLabel, idle: idleLabel });
+    try { await work(); } catch (error) { setAppStatus(error.message); }
+    finally { setBusy(button, false, { busy: busyLabel, idle: idleLabel }); }
+  }
+
+  $("#app-run").addEventListener("click", () => appAction($("#app-run"), "Running…", "Run test", async () => {
+    setAppStatus("");
+    const { runtime, temperature, max_tokens } = options();
+    const outcome = await api("/api/apps/test", { spec: specFromForm(), inputs: testInputs(), runtime, temperature, max_tokens });
+    showAppResult(outcome, outcome.ok ? "Result" : "The app did not produce a usable result");
+  }));
+
+  $("#app-preview").addEventListener("click", () => appAction($("#app-preview"), "Rendering…", "Preview prompt", async () => {
+    setAppStatus("");
+    const rendered = await api("/api/apps/render", { spec: specFromForm(), inputs: testInputs() });
+    showAppResult({ prompt: rendered.prompt, system: rendered.system }, "Prompt preview (no model was called)");
+  }));
+
+  $("#app-save").addEventListener("click", () => appAction($("#app-save"), "Saving…", "Save app", async () => {
+    const saved = await api("/api/apps", { spec: specFromForm() });
+    app.savedName = saved.name;
+    await loadApps(saved.name);
+    $("#app-delete").disabled = false;
+    setAppStatus(`Saved to apps/${saved.name}.json`);
+    updateAppSnippet();
+  }));
+
+  $("#app-delete").addEventListener("click", () => appAction($("#app-delete"), "Deleting…", "Delete", async () => {
+    if (!app.savedName || !confirm(`Delete the app “${app.savedName}”? This removes apps/${app.savedName}.json.`)) return;
+    const name = app.savedName;
+    await fetch("/api/apps/" + encodeURIComponent(name), { method: "DELETE" }).then(async (r) => {
+      if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "Delete failed.");
+    });
+    await loadApps();
+    newApp();
+    setAppStatus(`Deleted “${name}”.`);
+  }));
+
+  $("#app-download").addEventListener("click", () => {
+    const spec = specFromForm();
+    download((spec.name || "app") + ".json", spec);
+  });
+  $("#app-select").addEventListener("change", (event) => openApp(event.target.value));
+  $("#app-new").addEventListener("click", newApp);
+  $("#app-output").addEventListener("change", () => { $("#app-keys-wrap").hidden = $("#app-output").value !== "json"; });
+  for (const id of ["#app-template", "#app-system"]) $(id).addEventListener("input", renderAppInputs);
+  $("#app-inputs").addEventListener("input", updateAppSnippet);
+  $("#app-name").addEventListener("input", updateAppSnippet);
+  $("#app-snippet-kind").addEventListener("change", updateAppSnippet);
+  $("#app-copy-snippet").addEventListener("click", (event) => copy($("#app-snippet").textContent, event.currentTarget));
+  $("#runtime").addEventListener("change", updateAppSnippet);
+
+  function updateAppSnippet() {
+    const name = $("#app-name").value.trim() || "my-app";
+    const runtime = $("#runtime").value || "gradio";
+    const values = testInputs();
+    const kind = $("#app-snippet-kind").value;
+    let text;
+    if (kind === "python") {
+      text = "from sdk.natlas_sdk import NAtlas, PromptApp\n\n" +
+        `app = PromptApp.from_file("apps/${name}.json")\n` +
+        `client = NAtlas(runtime_type=${JSON.stringify(runtime)})\n\n` +
+        `result = app.run(client, ${JSON.stringify(values, null, 4)})\n` +
+        "print(result.output)";
+    } else if (kind === "curl") {
+      text = `curl -s ${location.origin}/api/apps/${name}/run \\\n  -H 'Content-Type: application/json' \\\n  -d ${shellQuote(JSON.stringify({ inputs: values, runtime }))}`;
+    } else {
+      const flags = Object.entries(values).map(([k, v]) => `-i ${k}=${shellQuote(v)}`).join(" ");
+      text = `python -m sdk.natlas_sdk run ${name} ${flags} --runtime ${runtime}`.replace(/\s+/g, " ").trim();
+    }
+    $("#app-snippet").textContent = text;
+    $("#app-snippet-note").textContent = app.savedName === name
+      ? "These use the saved file, so changes you have not saved yet are not included."
+      : "Save the app first so apps/" + name + ".json exists.";
+  }
+
+  /* ---------- start ---------- */
+  renderHistory();
+  renderChat();
+  newApp();
+  Promise.all([loadRuntimes(), loadDatasets(), loadApps()]).catch((error) => {
+    showError("Could not load workbench configuration: " + error.message);
+  });
+})();
+</script>
 </body>
 </html>

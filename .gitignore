@@ -17,3 +17,9 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+# Evaluation reports
+report*.json
+natlas-evaluation*.json
+
+natlas_workbench.egg-info/
+*.code-workspace
