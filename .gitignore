@@ -23,3 +23,6 @@ natlas-evaluation*.json
 
 natlas_workbench.egg-info/
 *.code-workspace
+
+# Downloaded local model files
+models/
