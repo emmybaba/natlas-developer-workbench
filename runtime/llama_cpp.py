@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .base import NAtlasRuntime
+from .base import NAtlasRuntime, merge_system, validate_messages
 
 
 class LlamaCppRuntime(NAtlasRuntime):
@@ -15,6 +15,9 @@ class LlamaCppRuntime(NAtlasRuntime):
         max_tokens: int = 256,
         verbose: bool = False,
     ):
+        if not model_path:
+            raise ValueError("NATLAS_MODEL_PATH is not configured.")
+
         model = Path(model_path)
 
         if not model.exists():
@@ -37,18 +40,27 @@ class LlamaCppRuntime(NAtlasRuntime):
             verbose=verbose,
         )
 
-    def generate(self, prompt: str) -> str:
-        """Generate a response from the local N-ATLaS GGUF model."""
+    def generate(self, prompt: str, **options) -> str:
+        return self.chat([{"role": "user", "content": prompt}], **options)
+
+    def chat(
+        self,
+        messages: list[dict],
+        system: str | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> str:
+        """Generate a reply from the local N-ATLaS GGUF model."""
+
+        system, conversation = merge_system(validate_messages(messages), system)
+        payload = ([{"role": "system", "content": system}] if system else []) + conversation
 
         response = self.llm.create_chat_completion(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
+            messages=payload,
+            temperature=(
+                self.temperature if temperature is None else temperature
+            ),
+            max_tokens=self.max_tokens if max_tokens is None else max_tokens,
         )
 
         return response["choices"][0]["message"]["content"] or ""

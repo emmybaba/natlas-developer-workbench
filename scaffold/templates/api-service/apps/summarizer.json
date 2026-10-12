@@ -1,0 +1,13 @@
+{
+  "name": "summarizer",
+  "description": "Summarise a passage in a few sentences, in the language you choose.",
+  "system": "You write clear, faithful summaries. Do not add facts that are not in the text.",
+  "template": "Summarise the text below in at most {{sentences}} sentences, written in {{language}}.\n\nText:\n{{text}}",
+  "inputs": [
+    {"name": "sentences", "label": "Maximum sentences", "default": "3"},
+    {"name": "language", "label": "Language", "default": "English"},
+    {"name": "text", "label": "Text"}
+  ],
+  "output": {"type": "text"},
+  "options": {"temperature": 0.2, "max_tokens": 400}
+}

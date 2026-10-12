@@ -1,0 +1,10 @@
+{"id": "en-health", "prompt": "Explain antimicrobial resistance in one sentence.", "tags": ["english", "health"], "max_chars": 1200}
+{"id": "yo-translate", "prompt": "Translate into Yoruba: Good morning, how are you?", "tags": ["yoruba", "translation"]}
+{"id": "ha-translate", "prompt": "Translate into Hausa: Good morning, how are you?", "tags": ["hausa", "translation"]}
+{"id": "ig-translate", "prompt": "Translate into Igbo: Good morning, how are you?", "tags": ["igbo", "translation"]}
+{"id": "pcm-translate", "prompt": "Translate into Nigerian Pidgin: Please come early tomorrow, the meeting starts at nine.", "tags": ["pidgin", "translation"]}
+{"id": "yo-question", "prompt": "Kí ni ìlú tó tóbi jù ní Nàìjíríà?", "tags": ["yoruba", "native-prompt"]}
+{"id": "ha-question", "prompt": "Menene babban birnin Najeriya?", "tags": ["hausa", "native-prompt"], "expect_any": ["Abuja"]}
+{"id": "ig-question", "prompt": "Gịnị bụ isi obodo Naịjirịa?", "tags": ["igbo", "native-prompt"], "expect_any": ["Abuja"]}
+{"id": "pcm-howto", "prompt": "How I fit take cook jollof rice? Give me simple steps.", "tags": ["pidgin", "how-to"]}
+{"id": "en-json", "prompt": "Return a JSON object with the keys \"language\" and \"greeting\" for a Hausa greeting. Output only JSON.", "tags": ["english", "structured-output"], "expect_json": true}

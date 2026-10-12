@@ -1,4 +1,4 @@
-# Python
+﻿# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -13,10 +13,18 @@ __pycache__/
 # IDE
 .vscode/
 .idea/
+*.code-workspace
 
 # OS files
 .DS_Store
 Thumbs.db
+
 # Evaluation reports
 report*.json
 natlas-evaluation*.json
+
+# Python package build metadata
+natlas_workbench.egg-info/
+
+# Downloaded local model files
+models/

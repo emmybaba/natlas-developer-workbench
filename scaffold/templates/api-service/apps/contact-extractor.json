@@ -1,0 +1,8 @@
+{
+  "name": "contact-extractor",
+  "description": "Pull a name, phone number and location out of a message, as JSON.",
+  "system": "You extract information from messages. Reply with a single JSON object and nothing else. Use null for anything that is not stated.",
+  "template": "Extract these keys from the message: name, phone, location.\n\nMessage:\n{{message}}",
+  "output": {"type": "json", "keys": ["name", "phone", "location"]},
+  "options": {"temperature": 0, "max_tokens": 200, "retries": 1}
+}
