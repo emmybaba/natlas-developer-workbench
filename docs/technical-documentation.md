@@ -201,5 +201,4 @@ Repository: https://github.com/emmybaba/natlas-developer-workbench
 GGUF repository selected for local testing: https://huggingface.co/inuwamobarak/N-ATLaS-8B-GGUF-Q4_K_M
 Hosted inference endpoint used during testing: https://koladeodunope-ednai-natlas-runtime.hf.space
 ________________________________________
-Submission note: Before submitting, confirm that the GitHub repository reflects the features described here. In particular, distinguish code already committed from local-only work, and retain the stated limitation that local GGUF inference is pending until the model has successfully generated a response.
 
