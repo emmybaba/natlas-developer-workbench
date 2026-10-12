@@ -193,7 +193,14 @@
       <div class="card">
         <div class="row"><h2 class="grow" style="margin:0">Conversation</h2>
           <button class="small" id="chat-reset" type="button">New conversation</button></div>
-        <p class="sub" style="margin-top:8px">Uses the runtime and settings on the left. The whole history is sent each turn; whether a service makes use of earlier turns depends on that service.</p>
+        <p class="sub" style="margin-top:8px">Conversations are saved in this browser on this device; they are not synced to an account or cloud.</p>
+        <div class="field-grid">
+          <div><label for="chat-session-select">Open conversation</label><select id="chat-session-select" aria-label="Saved conversations"></select></div>
+          <div><label for="chat-session-title">Conversation title</label><input id="chat-session-title" type="text" maxlength="100" placeholder="Name this conversation"></div>
+        </div>
+        <label for="chat-system">Instructions for this conversation <span class="hint">(optional)</span></label>
+        <textarea id="chat-system" rows="2" style="min-height:64px" placeholder="e.g. Help me build a Python app and explain changes step by step."></textarea>
+        <div class="row" style="margin-top:8px"><button class="small" id="chat-rename" type="button">Save title and instructions</button><button class="small" id="chat-delete" type="button">Delete conversation</button><button class="small" id="chat-export" type="button">Export JSON</button></div>
         <div class="chatlog" id="chat-log" aria-live="polite"><div class="sub" id="chat-empty">Say something to start.</div></div>
         <label for="chat-input">Message</label>
         <textarea id="chat-input" rows="3" style="min-height:70px" placeholder="Type a message… (Ctrl/⌘ + Enter to send)"></textarea>
@@ -734,47 +741,122 @@
   $("#eval-stop").addEventListener("click", () => { evalStop = true; });
   $("#eval-export").addEventListener("click", () => download("natlas-evaluation.json", { dataset: $("#dataset").value, runtime: $("#runtime").value, results: evalResults }));
 
-  /* ---------- chat ---------- */
-  let chatHistory = [];
-
-  function renderChat(pendingNote) {
-    const log = $("#chat-log");
-    log.replaceChildren(...(chatHistory.length ? chatHistory.map((m) =>
-      el("div", { class: "bubble " + m.role }, m.content,
-        m.meta ? el("small", null, m.meta) : null))
-      : [el("div", { class: "sub", id: "chat-empty" }, "Say something to start.")]));
-    if (pendingNote) log.append(el("div", { class: "sub" }, pendingNote));
-    log.scrollTop = log.scrollHeight;
-  }
-
-  async function sendChat() {
-    const input = $("#chat-input");
-    const text = input.value.trim();
-    const hint = $("#chat-hint");
-    hint.textContent = "";
-    if (!text) { hint.textContent = "Type a message first."; return; }
-    const button = $("#chat-send");
-    setBusy(button, true, { busy: "Sending…", idle: "Send" });
-    const messages = [...chatHistory.map(({ role, content }) => ({ role, content })), { role: "user", content: text }];
-    chatHistory.push({ role: "user", content: text });
-    input.value = "";
-    renderChat("Thinking…");
+  /* ---------- persistent chat sessions (browser-local) ---------- */
+  const CHAT_STORAGE_KEY = "natlas-wb-chat-sessions-v1";
+  function newChatId() { return "chat-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 8); }
+  function loadChatSessions() {
     try {
-      const result = await api("/api/chat", { messages, ...options() });
-      chatHistory.push({ role: "assistant", content: result.response, meta: `${result.runtime} · ${result.latency_ms} ms` });
+      const value = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "[]");
+      if (!Array.isArray(value)) return [];
+      return value.filter((s) => s && typeof s.id === "string" && Array.isArray(s.messages)).map((s) => ({
+        id: s.id, title: String(s.title || "New chat").slice(0, 100), system: String(s.system || ""),
+        createdAt: Number(s.createdAt) || Date.now(), updatedAt: Number(s.updatedAt) || Date.now(),
+        messages: s.messages.filter((m) => m && ["user", "assistant"].includes(m.role) && typeof m.content === "string")
+          .map((m) => ({ role: m.role, content: m.content, ...(m.meta ? { meta: String(m.meta) } : {}) }))
+      }));
+    } catch (error) { console.warn("Could not load saved chats:", error); return []; }
+  }
+  let chatSessions = loadChatSessions();
+  let activeChatId = chatSessions[0]?.id || null;
+  let chatSending = false;
+  function activeChat() { return chatSessions.find((s) => s.id === activeChatId) || null; }
+  function saveChatSessions() {
+    try { localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(chatSessions)); return true; }
+    catch (error) { $("#chat-hint").textContent = "Could not save chats. Browser storage may be full or disabled."; return false; }
+  }
+  function ensureChat() {
+    let session = activeChat();
+    if (!session) {
+      session = { id: newChatId(), title: "New chat", system: "", createdAt: Date.now(), updatedAt: Date.now(), messages: [] };
+      chatSessions.unshift(session); activeChatId = session.id; saveChatSessions();
+    }
+    return session;
+  }
+  function titleFromMessage(text) {
+    const line = text.replace(/\s+/g, " ").trim();
+    return line.length > 42 ? line.slice(0, 39) + "…" : (line || "New chat");
+  }
+  function renderChatSessionList() {
+    const select = $("#chat-session-select");
+    select.replaceChildren(...chatSessions.map((s) => el("option", { value: s.id }, s.title || "New chat")));
+    if (!chatSessions.length) select.append(el("option", { value: "" }, "No saved conversations"));
+    select.value = activeChatId || "";
+    $("#chat-delete").disabled = !activeChat(); $("#chat-export").disabled = !activeChat();
+  }
+  function renderChat(pendingNote) {
+    const session = activeChat(); const messages = session ? session.messages : [];
+    const log = $("#chat-log");
+    log.replaceChildren(...(messages.length ? messages.map((m) => el("div", { class: "bubble " + m.role }, m.content,
+      m.meta ? el("small", null, m.meta) : null)) : [el("div", { class: "sub", id: "chat-empty" }, "Say something to start this conversation.")]));
+    if (pendingNote) log.append(el("div", { class: "sub" }, pendingNote));
+    log.scrollTop = log.scrollHeight; renderChatSessionList();
+  }
+  function openChat(id) {
+    if (chatSending) return;
+    activeChatId = chatSessions.some((s) => s.id === id) ? id : null;
+    const session = ensureChat();
+    $("#chat-session-title").value = session.title; $("#chat-system").value = session.system;
+    $("#chat-hint").textContent = ""; renderChat();
+  }
+  function createChat() {
+    if (chatSending) return;
+    const session = { id: newChatId(), title: "New chat", system: "", createdAt: Date.now(), updatedAt: Date.now(), messages: [] };
+    chatSessions.unshift(session); activeChatId = session.id; saveChatSessions();
+    $("#chat-session-title").value = session.title; $("#chat-system").value = ""; $("#chat-input").value = "";
+    $("#chat-hint").textContent = ""; renderChat(); $("#chat-input").focus();
+  }
+  async function sendChat() {
+    if (chatSending) return;
+    const input = $("#chat-input"); const text = input.value.trim(); const hint = $("#chat-hint"); hint.textContent = "";
+    if (!text) { hint.textContent = "Type a message first."; return; }
+    const session = ensureChat(); const sessionId = session.id; const button = $("#chat-send");
+    chatSending = true; setBusy(button, true, { busy: "Sending…", idle: "Send" });
+    const messages = [...session.messages.map(({ role, content }) => ({ role, content })), { role: "user", content: text }];
+    session.messages.push({ role: "user", content: text });
+    if (session.title === "New chat") session.title = titleFromMessage(text);
+    session.updatedAt = Date.now(); input.value = ""; saveChatSessions();
+    $("#chat-session-title").value = session.title; renderChat("Thinking…");
+    try {
+      const opts = options(); const instruction = $("#chat-system").value.trim();
+      const result = await api("/api/chat", { messages, ...opts, system: instruction || opts.system });
+      const current = chatSessions.find((s) => s.id === sessionId);
+      if (current) { current.messages.push({ role: "assistant", content: result.response, meta: `${result.runtime} · ${result.latency_ms} ms` }); current.updatedAt = Date.now(); saveChatSessions(); }
       renderChat();
     } catch (error) {
-      chatHistory.pop();            // keep history consistent with what the server saw
-      input.value = text;           // let the user retry without retyping
-      renderChat();
-      hint.textContent = error.message;
-    } finally { setBusy(button, false, { busy: "Sending…", idle: "Send" }); input.focus(); }
+      const current = chatSessions.find((s) => s.id === sessionId);
+      if (current && current.messages.at(-1)?.role === "user" && current.messages.at(-1)?.content === text) current.messages.pop();
+      saveChatSessions(); input.value = text; renderChat(); hint.textContent = error.message;
+    } finally { chatSending = false; setBusy(button, false, { busy: "Sending…", idle: "Send" }); renderChatSessionList(); input.focus(); }
   }
   $("#chat-send").addEventListener("click", sendChat);
-  $("#chat-input").addEventListener("keydown", (event) => {
-    if ((event.ctrlKey || event.metaKey) && event.key === "Enter") sendChat();
+  $("#chat-input").addEventListener("keydown", (event) => { if ((event.ctrlKey || event.metaKey) && event.key === "Enter") sendChat(); });
+  $("#chat-reset").addEventListener("click", createChat);
+  $("#chat-session-select").addEventListener("change", (event) => openChat(event.target.value));
+  $("#chat-rename").addEventListener("click", () => {
+    const session = activeChat(); if (!session) return;
+    session.title = ($("#chat-session-title").value.trim() || "New chat").slice(0, 100);
+    session.system = $("#chat-system").value.trim(); session.updatedAt = Date.now(); saveChatSessions(); renderChat();
+    $("#chat-hint").textContent = "Title and instructions saved in this browser.";
   });
-  $("#chat-reset").addEventListener("click", () => { chatHistory = []; $("#chat-hint").textContent = ""; renderChat(); });
+  $("#chat-session-title").addEventListener("change", () => {
+    const session = activeChat(); if (!session) return;
+    session.title = ($("#chat-session-title").value.trim() || "New chat").slice(0, 100); session.updatedAt = Date.now(); saveChatSessions(); renderChatSessionList();
+  });
+  $("#chat-system").addEventListener("change", () => {
+    const session = activeChat(); if (!session) return;
+    session.system = $("#chat-system").value.trim(); session.updatedAt = Date.now(); saveChatSessions();
+  });
+  $("#chat-delete").addEventListener("click", () => {
+    if (chatSending) return; const session = activeChat(); if (!session) return;
+    if (!confirm(`Delete “${session.title}” from this browser? This cannot be undone.`)) return;
+    chatSessions = chatSessions.filter((s) => s.id !== session.id); activeChatId = chatSessions[0]?.id || null;
+    saveChatSessions(); if (activeChat()) openChat(activeChatId); else createChat();
+  });
+  $("#chat-export").addEventListener("click", () => {
+    const session = activeChat(); if (!session) return;
+    const name = (session.title || "natlas-chat").replace(/[^a-z0-9-_]+/gi, "-").replace(/^-|-$/g, "") || "natlas-chat";
+    download(name + ".json", session);
+  });
 
   /* ---------- app builder ---------- */
   const VARIABLE = /{{\s*([A-Za-z_][A-Za-z0-9_]*)\s*}}/g;
@@ -998,7 +1080,8 @@
 
   /* ---------- start ---------- */
   renderHistory();
-  renderChat();
+  if (!chatSessions.length) ensureChat();
+  openChat(activeChatId);
   newApp();
   Promise.all([loadRuntimes(), loadDatasets(), loadApps()]).catch((error) => {
     showError("Could not load workbench configuration: " + error.message);
